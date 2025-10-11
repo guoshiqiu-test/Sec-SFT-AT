@@ -133,7 +133,7 @@ We list our evaluation results as follows:
 <a name="citation"></a>
 ## 📝 Citation
 
-If you find our work useful, please consider citing LongReward:
+If you find our work useful, please consider citing AdaptThink:
 
 ```
 @article{zhang2025adapt_think,
