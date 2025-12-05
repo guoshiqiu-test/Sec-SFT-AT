@@ -1,4 +1,4 @@
-# AdaptThink: LLM Can Learn When to Think
+# [EMNLP2025] AdaptThink: LLM Can Learn When to Think
 
 <p align="center">
     🤗 <a href="https://huggingface.co/collections/THU-KEG/adaptthink-682a1059aa9f5102c4fa0470" target="_blank">HF Repo</a> • 📃 <a href="https://arxiv.org/abs/2505.13417" target="_blank">Paper</a>
