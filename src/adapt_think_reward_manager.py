@@ -252,30 +252,17 @@ class AdaptThinkRewardManager:
                 #     reward = acc - ref_mean_acc_thinking + self.nothinking_bonus
                 # else:
                 #     reward = acc - ref_mean_acc_thinking
-
-                if enforce_nothinking:
-                    if acc == 1:
-                        if 100 < response_len <= 200:
-                            reward = 1.2 + self.nothinking_bonus  # 正确 + 简洁解释 ✅✅
-                        elif response_len > 200:
-                            reward = 1.0  # 正确 + 详细解释 ✅
-                        else:
-                            reward = 0.2  # 正确 + 太简单解释 ⚠️
-                    else:
-                        reward = acc - ref_mean_acc_thinking  # 错误 ❌❌
-                        # if has_explanation:
-                        #     reward += self.nothinking_bonus  # 即使错误也要有加一个解释奖励
-
+                import math
+                sigma=30
+                delta=10
+                diff = abs(response_len - ref_mean_length//3.5)
+                if diff <= delta:
+                    nothink_gema = 1
                 else:
-                    reward = acc - ref_mean_acc_thinking
-                    # === 思考模式下长度奖励 ===
-                    if acc == 1:
-                        if 300 <= response_len <= 2000:
-                            reward = 1.2  # 理想长度 ✅
-                        elif response_len < 300:
-                            reward = 0.2  # 太短 ❌
-                        elif response_len > 2000:
-                            reward = 1.0  # 太长 ⚠️
+                    diff -= delta       
+                    nothink_gema=math.exp(-(diff ** 2) / (2 * sigma ** 2))
+
+
 
                 score['score'] = reward
                 if enforce_nothinking:
