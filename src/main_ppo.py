@@ -71,7 +71,10 @@ def run_ppo(config) -> None:
                 'NCCL_DEBUG': 'WARN',
                 'VLLM_LOGGING_LEVEL': 'WARN'
             }
-        })
+        },
+        num_cpus = 10,
+        dashboard_host = "0.0.0.0"
+        )
 
     runner = TaskRunner.remote()
     ray.get(runner.run.remote(config))

@@ -8,17 +8,20 @@ from copy import deepcopy
 import argparse
 import random
 
+
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--num_samples", type=int, default=10) # 0 for all data
-    parser.add_argument("--K", type=int, default=16) 
+    parser.add_argument("--num_samples", type=int, default=10)  # 0 for all data
+    parser.add_argument("--K", type=int, default=16)
     parser.add_argument("--dataset_path", type=str, default='./data/test/deepscaler.json')  # data path
-    parser.add_argument("--model_name", type=str, default="DeepSeek-R1-Distill-Qwen-1.5B")  
-    parser.add_argument("--max_tokens", type=int, default=16384)   
-    parser.add_argument("--proc_num", type=int, default=512)  
-    parser.add_argument("--nothinking", action='store_true', default=False)   
-    
+    parser.add_argument("--model_name", type=str, default="DeepSeek-R1-Distill-Qwen-1.5B")
+    parser.add_argument("--max_tokens", type=int, default=16384)
+    parser.add_argument("--proc_num", type=int, default=32)
+    parser.add_argument("--port", type=int, default=8002)
+    parser.add_argument("--nothinking", action='store_true', default=False)
+
     return parser.parse_args()
+
 
 args = parse_args()
 K = args.K
@@ -28,8 +31,9 @@ dataset = args.dataset_path.split('/')[-1].split('.json')[0].strip()
 num_samples = args.num_samples
 max_tokens = args.max_tokens
 nothinking = args.nothinking
-        
-print("INFERENCE:",K,model,dataset,"num:",num_samples)
+model_port = args.port
+
+print("INFERENCE:", K, model, dataset, "num:", num_samples)
 suffix = '_nothinking' if nothinking else ''
 fout_path = f"./data/train/ref_presampling/{model}_{dataset}_n{num_samples}_K{K}_len{max_tokens}{suffix}.jsonl"
 os.makedirs("./data/train/ref_presampling", exist_ok=True)
@@ -40,7 +44,7 @@ if os.path.exists(fout_path):
         for js in tqdm(f):
             s.add(js['_id'])
 
-data = json.load(open(ipt_path,"r"))
+data = json.load(open(ipt_path, "r"))
 random.seed(42)
 random.shuffle(data)
 if num_samples > 0:
@@ -58,12 +62,19 @@ for i, js in enumerate(data):
 # need_list = need_list[:1]
 print('Total inference num:', len(need_list))
 
-if 'DeepSeek' in model:
+# if 'DeepSeek' in model:
+if 'Qwen3' in model:
+    if nothinking:
+        prompt_template = "<|im_start|>user\n{question}\n<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n"
+    else:
+        prompt_template = "<|im_start|>user\n{question}\n<|im_end|>\n<|im_start|>assistant\n"
+else:
     if nothinking:
         prompt_template = '<｜begin▁of▁sentence｜><｜User｜>{question}<｜Assistant｜><think>\n</think>'
     else:
         prompt_template = '<｜begin▁of▁sentence｜><｜User｜>{question}<｜Assistant｜><think>\n'
     # sampling_params['stop'] = ["<｜User｜>", "<｜end▁of▁sentence｜>"]
+
 
 def chat(js):
     try:
@@ -77,7 +88,7 @@ def chat(js):
             "stream": False,
         }
         response = requests.post(
-            'http://127.0.0.1:8000/v1/completions',
+            f'http://127.0.0.1:{model_port}/v1/completions',
             json=request_data,
             headers={"Content-Type": "application/json"},
             timeout=1200,
@@ -88,12 +99,13 @@ def chat(js):
             # js['response'], js['usage'] = output, usage
             js['response'] = output
             with open(fout_path, "a") as fout:
-                fout.write(json.dumps(js, ensure_ascii=False)+'\n')
+                fout.write(json.dumps(js, ensure_ascii=False) + '\n')
                 fout.flush()
-            return 1   
+            return 1
     except:
         traceback.print_exc()
         return None
+
 
 with Pool(args.proc_num) as p:
     rst = list(tqdm(p.imap(chat, need_list), total=len(need_list)))
