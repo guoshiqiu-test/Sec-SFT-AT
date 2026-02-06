@@ -129,7 +129,8 @@ class AdaptThinkRewardManager:
 
             uid = data_item.non_tensor_batch['uid'] if self.is_training else 'validate'
             enforce_nothinking = data_item.batch['enforce_nothinking'].item()
-            is_nothinking = response_str.strip().startswith('</think>')
+            resp = response_str.strip()
+            is_nothinking = resp.startswith("</think>") or "</think>" not in resp
             score.update({
                 'response_length': valid_response_length,
                 'ground_truth': str(ground_truth),
@@ -172,15 +173,15 @@ class AdaptThinkRewardManager:
                         'thinking_response_length': valid_response_length,
                         'thinking_acc': score['acc'],
                     })
-
+                    
             all_scores.append(score)
             if self.is_training:
                 if score['enforce_nothinking']:
                     id2scores['nothinking'][uid].append(score)
                 else:
                     id2scores['thinking'][uid].append(score)
-
-            print_key = f"source_{data_source}_{'nothinking' if is_nothinking else 'thinking'}"
+            
+            print_key=f"source_{data_source}_{'nothinking' if is_nothinking else 'thinking'}"
             if print_key not in already_print_data_sources:
                 already_print_data_sources[print_key] = 0
 
@@ -237,21 +238,18 @@ class AdaptThinkRewardManager:
             score = all_scores[i]
             if self.is_training:
                 uid = data_item.non_tensor_batch['uid']
-                enforce_nothinking, acc, response_len = score['enforce_nothinking'], score['acc'], score[
-                    'response_length']
+                enforce_nothinking, acc, response_len = score['enforce_nothinking'], score['acc'], score['response_length']
                 has_explanation = score.get('has_explanation', False)
-                mean_acc_nothinking = id2mean_acc['nothinking'][uid]
-                mean_len_nothinking, std_len_nothinking = id2mean_len['nothinking'][uid], id2std_len['nothinking'][uid]
-                mean_acc_thinking = id2mean_acc['thinking'][uid]
-                mean_len_thinking, std_len_thinking = id2mean_len['thinking'][uid], id2std_len['thinking'][uid]
+                # mean_acc_nothinking = id2mean_acc['nothinking'][uid]
+                # mean_len_nothinking, std_len_nothinking = id2mean_len['nothinking'][uid], id2std_len['nothinking'][uid]
+                # mean_acc_thinking = id2mean_acc['thinking'][uid]
+                # mean_len_thinking, std_len_thinking = id2mean_len['thinking'][uid], id2std_len['thinking'][uid]
 
                 ref_metrics = uid2ref_metrics[uid]
                 ref_mean_acc_thinking = ref_metrics['avg_acc_thinking']
+                ref_mean_length = ref_metrics['avg_len_thinking']
 
-                # if enforce_nothinking:
-                #     reward = acc - ref_mean_acc_thinking + self.nothinking_bonus
-                # else:
-                #     reward = acc - ref_mean_acc_thinking
+
                 import math
                 sigma=30
                 delta=10
@@ -261,6 +259,26 @@ class AdaptThinkRewardManager:
                 else:
                     diff -= delta       
                     nothink_gema=math.exp(-(diff ** 2) / (2 * sigma ** 2))
+                t_sigma=100
+                t_delta=80
+                t_diff = abs(response_len - ref_mean_length//1)
+                if t_diff <= t_delta:
+                    think_gema = 1
+                else:
+                    t_diff -= t_delta       
+                    think_gema=math.exp(-(t_diff ** 2) / (2 * t_sigma ** 2))
+                              
+                if enforce_nothinking:
+                    if acc == 1:
+                        reward = (1 + self.nothinking_bonus)*nothink_gema
+                    else:
+                        reward = acc - ref_mean_acc_thinking
+                    
+   
+                else:
+                    reward = acc - ref_mean_acc_thinking
+                    if acc == 1:
+                            reward = 1*think_gema
 
 
 
