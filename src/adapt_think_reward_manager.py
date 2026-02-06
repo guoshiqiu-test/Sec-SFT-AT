@@ -258,27 +258,16 @@ class AdaptThinkRewardManager:
                     nothink_gema = 1
                 else:
                     diff -= delta       
-                    nothink_gema=math.exp(-(diff ** 2) / (2 * sigma ** 2))
-                t_sigma=100
-                t_delta=80
-                t_diff = abs(response_len - ref_mean_length//1)
-                if t_diff <= t_delta:
-                    think_gema = 1
-                else:
-                    t_diff -= t_delta       
-                    think_gema=math.exp(-(t_diff ** 2) / (2 * t_sigma ** 2))
-                              
+                    nothink_gema=math.exp(-(diff ** 2) / (2 * sigma ** 2))                        
                 if enforce_nothinking:
                     if acc == 1:
                         reward = (1 + self.nothinking_bonus)*nothink_gema
                     else:
                         reward = acc - ref_mean_acc_thinking
-                    
-   
                 else:
                     reward = acc - ref_mean_acc_thinking
                     if acc == 1:
-                            reward = 1*think_gema
+                            reward = 1
 
 
 
