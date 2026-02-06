@@ -21,10 +21,10 @@ end_of_think_token_id=151668 # </think> # "</think> qwen3
 non_end_of_think_token_id=71486 # "Alright"qwen3
 nothinking_bonus=0.01
 adjust_old_logprobs=True
-ref_result_file="/data3/paper/AdaptThink/data/train/ref_results/atref.json"
+ref_result_file="./data/train/ref_results/SFT-1.5B_cybermetric_cybersecurity_K16_len16384.json"
 
 PROJECT_NAME="adapt_think"
-# MODEL_PATH="/data2/LLM_model/sft/train_2025-08-19-09-21-41"  # path to your download HF model
+# MODEL_PATH="./data/LLM_model/sft/train_2025-08-19-09-21-41"  # path to your download HF model
 EXP_NAME="${MODEL_PATH}_${train_dataset}_btz${batch_size}_n${n_rollout}_nr${nothinking_ratio}-sl${max_response_length}-fl${adapt_think_max_response_length}-nb${nothinking_bonus}-lr${LR}"
 CKPT_DIR="./ckpts/${PROJECT_NAME}/${EXP_NAME}"
 
