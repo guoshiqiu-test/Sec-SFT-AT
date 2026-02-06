@@ -1,32 +1,36 @@
-#!/bin/bash
+6+3335555ioooosxzdd4#!/bin/bash
 set -x
 export HYDRA_FULL_ERROR=1
+CUDA_VISIBLE_DEVICES=0,1,2,3
+n_gpus_per_node=4
+ray_num_workers=4
 
-train_dataset=deepscaler
-train_files="./data/train/preprocessed_data/${train_dataset}.parquet"
-val_files="['./data/test/preprocessed_data/gsm8k.parquet','./data/test/preprocessed_data/math.parquet','./data/test/preprocessed_data/aime*16.parquet']"
+train_dataset=cybersecurity
 
-batch_size=128
+train_files="./data/train/preprocessed_data/sec-at.parquet"
+val_files="['./data/test/preprocessed_data/cybermetric_test_0107.parquet','./data/test/preprocessed_data/sharegpt_test_0107.parquet']"
+
+batch_size=64
 n_rollout=16
-max_response_length=16384
+max_response_length=16284
 LR=2e-6
 
 nothinking_ratio=0.5
 nothinking_max_response_length=4096
-end_of_think_token_id=151649 # </think>
-non_end_of_think_token_id=71486 # "Alright"
-nothinking_bonus=0.05
+end_of_think_token_id=151668 # </think> # "</think> qwen3
+non_end_of_think_token_id=71486 # "Alright"qwen3
+nothinking_bonus=0.01
 adjust_old_logprobs=True
-ref_result_file="./data/train/ref_results/DeepSeek-R1-Distill-Qwen-7B_deepscaler_K16_len16384.json"
+ref_result_file="/data3/paper/AdaptThink/data/train/ref_results/atref.json"
 
-PROJECT_NAME="adapt_think_verl"
-MODEL_PATH="deepseek-ai/DeepSeek-R1-Distill-Qwen-7B" # path to your download HF model
-EXP_NAME="adapt_think_ds7b_${train_dataset}_btz${batch_size}_n${n_rollout}_nr${nothinking_ratio}-sl${max_response_length}-fl${adapt_think_max_response_length}-nb${nothinking_bonus}-lr${LR}"
-# EXP_NAME="adapt_think_debug"
+PROJECT_NAME="adapt_think"
+# MODEL_PATH="/data2/LLM_model/sft/train_2025-08-19-09-21-41"  # path to your download HF model
+EXP_NAME="${MODEL_PATH}_${train_dataset}_btz${batch_size}_n${n_rollout}_nr${nothinking_ratio}-sl${max_response_length}-fl${adapt_think_max_response_length}-nb${nothinking_bonus}-lr${LR}"
 CKPT_DIR="./ckpts/${PROJECT_NAME}/${EXP_NAME}"
 
+
 # Train over a single node, 8 A100-80GB GPUs.
-python3 -m src.main_ppo \
+CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES python3 -m src.main_ppo \
     algorithm.adv_estimator=naive \
     reward_model.reward_manager=adapt_think \
     reward_model.reward_kwargs.nothinking_bonus=$nothinking_bonus \
@@ -39,6 +43,7 @@ python3 -m src.main_ppo \
     data.max_response_length=$max_response_length \
     data.filter_overlong_prompts=True \
     data.truncation='error' \
+    data.ray_num_workers=$ray_num_workers \
     actor_rollout_ref.adapt_think.nothinking_ratio=$nothinking_ratio \
     actor_rollout_ref.adapt_think.nothinking_max_response_length=$nothinking_max_response_length \
     actor_rollout_ref.adapt_think.eot_token_id=$end_of_think_token_id \
@@ -60,27 +65,27 @@ python3 -m src.main_ppo \
     actor_rollout_ref.actor.fsdp_config.optimizer_offload=False \
     actor_rollout_ref.rollout.tensor_model_parallel_size=1 \
     actor_rollout_ref.rollout.name=vllm \
-    actor_rollout_ref.rollout.gpu_memory_utilization=0.8 \
+    actor_rollout_ref.rollout.gpu_memory_utilization=0.4 \
     actor_rollout_ref.rollout.n=$n_rollout \
-    actor_rollout_ref.rollout.temperature=0.6 \
+    actor_rollout_ref.rollout.temperature=0.8 \
     actor_rollout_ref.rollout.val_kwargs.do_sample=True \
     actor_rollout_ref.rollout.val_kwargs.n=1 \
-    actor_rollout_ref.rollout.val_kwargs.temperature=0.6 \
+    actor_rollout_ref.rollout.val_kwargs.temperature=0.8 \
     actor_rollout_ref.rollout.val_kwargs.top_p=0.95 \
     actor_rollout_ref.rollout.max_num_batched_tokens=32768 \
     actor_rollout_ref.rollout.enable_chunked_prefill=True \
     actor_rollout_ref.ref.fsdp_config.param_offload=True \
     algorithm.use_kl_in_reward=False \
     trainer.critic_warmup=0 \
-    trainer.logger=['console','wandb'] \
+    trainer.logger=['wandb'] \
     trainer.project_name=$PROJECT_NAME \
     trainer.experiment_name=$EXP_NAME \
     trainer.val_before_train=True \
-    trainer.n_gpus_per_node=8 \
+    trainer.n_gpus_per_node=$n_gpus_per_node \
     trainer.nnodes=1 \
     trainer.default_local_dir="${CKPT_DIR}" \
-    trainer.save_freq=10 \
-    trainer.test_freq=10 \
-    trainer.total_epochs=10 \
+    trainer.save_freq=20 \
+    trainer.test_freq=20 \
+    trainer.total_epochs=2 \
     custom_reward_function.path="./src/adapt_think_rm.py" \
     custom_reward_function.name="adapt_think_rm" \
