@@ -1,4 +1,3 @@
-6+3335555ioooosxzdd4#!/bin/bash
 set -x
 export HYDRA_FULL_ERROR=1
 CUDA_VISIBLE_DEVICES=0,1,2,3
